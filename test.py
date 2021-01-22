@@ -155,7 +155,7 @@ def main():
     results = []
     endRowCheck = 0
     #read file and clean whitespace via tokenization
-    with open('intercityCosts48.txt', 'r') as cityCost:
+    with open('intercityCosts17.txt', 'r') as cityCost:
         lines = cityCost.readlines()
         endIndex = len(lines) - 1
         halfIndex = int(endIndex/2)
@@ -228,7 +228,7 @@ def main():
 
     gens = 0
     tempCostList = []
-    while gens < 40000:
+    while gens < 300:
         newParents = []
         currentParentList = 0
         #perform crossover USE A FUNCTION HERE
