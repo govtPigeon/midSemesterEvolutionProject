@@ -6,7 +6,7 @@ import re
 import sys
 import io
 
-def crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, colCount, newParents):
+def crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, newParents):
     newParentsTemp = []
     tempParents = []
     pathComplete = []
@@ -16,11 +16,12 @@ def crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, c
     pick = random.randrange(1, 3)
     mutate = random.randrange(0, 11)
 
-    firstCross = str(evalParents[currentParentList][0:halfIndex+1]) + str(evalParents[currentParentList+1][halfIndex+1:endIndex+2])
-    firstCross = (firstCross.strip('[').strip(']').replace('][', ', '))
-    firstCross = firstCross.split(',')
-    firstHalf = [int(i.strip()) for i in firstCross[1:halfIndex+1]]
-    secondHalf = [int(i.strip()) for i in firstCross[halfIndex+1:-1]]
+    # cross first half of first parent with second half of second parent
+    cross = str(evalParents[currentParentList][0:halfIndex+1]) + str(evalParents[currentParentList+1][halfIndex+1:endIndex+2])
+    cross = (cross.strip('[').strip(']').replace('][', ', '))
+    cross = cross.split(',')
+    firstHalf = [int(i.strip()) for i in cross[1:halfIndex+1]]
+    secondHalf = [int(i.strip()) for i in cross[halfIndex+1:-1]]
 
     if pick == 1:
         for i in firstHalf:
@@ -65,18 +66,18 @@ def crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, c
         tempParents.clear()
     parentsGenerated += 1
 
-    # cross first half of first parent with second half of second parent. repeat for remaining parents.
-    firstCross = str(evalParents[currentParentList + 1][0:halfIndex + 1]) + str(evalParents[currentParentList][halfIndex + 1:endIndex + 2])
-    firstCross = (firstCross.strip('[').strip(']').replace('][', ', '))
-    firstCross = firstCross.split(',')
-    # pathComplete.append(firstCross[0])
-    # pathComplete.append(firstCross[-1])
-    firstHalf = [int(i.strip()) for i in firstCross[1:halfIndex + 1]]
-    secondHalf = [int(i.strip()) for i in firstCross[halfIndex + 1:-1]]
+    # cross first half of second parent with second half of first parent
+    cross = str(evalParents[currentParentList + 1][0:halfIndex + 1]) + str(evalParents[currentParentList][halfIndex + 1:endIndex + 2])
+    cross = (cross.strip('[').strip(']').replace('][', ', '))
+    cross = cross.split(',')
+    # pathComplete.append(cross[0])
+    # pathComplete.append(cross[-1])
+    firstHalf = [int(i.strip()) for i in cross[1:halfIndex + 1]]
+    secondHalf = [int(i.strip()) for i in cross[halfIndex + 1:-1]]
 
     badChoice = []
     badChoiceIndex = []
-    # 50% chance to alter first half.. 50% to alter second half. if pick is 1, alter first half to maintain path validity
+    # 50% chance to alter first half.. 50% to alter second half. if pick is 1, alter first half to maintain path validity. if pick is 2, alter second half to maintain path validity.
     if len(newParents) == len(evalParents):
         return newParents
     if pick == 1:
@@ -87,6 +88,7 @@ def crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, c
         for i in secondHalf:
             if i not in badChoice:
                 badChoice.append(i)
+        #cleanGenes always generates our good gene choices for whatever we're trying to fill. could be start/end of the tour or a mutation.
         cleanGenes = [i for i in choiceList if i not in badChoice]
         for i in badChoiceIndex:
             choice = random.choice(cleanGenes)
@@ -153,7 +155,7 @@ def main():
     results = []
     endRowCheck = 0
     #read file and clean whitespace via tokenization
-    with open('intercityCosts17.txt', 'r') as cityCost:
+    with open('intercityCosts48.txt', 'r') as cityCost:
         lines = cityCost.readlines()
         endIndex = len(lines) - 1
         halfIndex = int(endIndex/2)
@@ -166,19 +168,6 @@ def main():
         results.append(list(map(float, line)))
     df = pd.DataFrame(results)
     print(df)
-
-    # grab coordinates from list
-    # xCoords = [float(coordSet[1]) for coordSet in coordList]
-    # yCoords = [float(coordSet[2]) for coordSet in coordList]
-    # print(xCoords)
-    # print(yCoords)
-    #print(df.shape[0])
-    # dfSmall = pd.Series(df[0])
-    # #print(dfSmall)
-    # dfSmall = dfSmall.nsmallest(len(dfSmall))
-    #plt.plot(xCoords, yCoords, '.')
-    #plt.show()
-
     #select initial population
     visitedList = []
     parents = []
@@ -216,7 +205,6 @@ def main():
         column = colCount + 1
         _ = countHold + 1
 
-    dfSmall = pd.Series(df[selectMove])
     costSum = [sum(i) for i in costList]
     _ = 0
     for i in parents:
@@ -239,23 +227,49 @@ def main():
     #print(fitness)
 
     gens = 0
-    while gens < 15:
+    tempCostList = []
+    while gens < 40000:
         newParents = []
         currentParentList = 0
         #perform crossover USE A FUNCTION HERE
         while len(newParents) < len(evalParents):
             #crossover function also mutates with 70% chance
-            crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, colCount, newParents)
+            crossover(choiceList, evalParents, halfIndex, endIndex, currentParentList, newParents)
             currentParentList += 1
-        evalParents = newParents.copy()
-        gens += 1
+        #evalParents = newParents.copy()
         print("::CROSSOVER::MUTATION::")
+
+        #while pIndex < colCount + 1:
+        costList.clear()
         for i in newParents:
-            print('path: ' + str(i))
+            tempCost.clear()
+            pIndex = 1
+            for move in i:
+                dfSmall = pd.Series(df[i[pIndex]])
+                tempCost.append(dfSmall[move])
+                pIndex += 1
+                if pIndex == colCount + 2:
+                    pIndex = 0
+                    break
+            costList.append(tempCost.copy())
+        _ = 0
+        for i in newParents:
+            costSum = sum(costList[_])
+            tempCostList.append(costSum)
+            print('path: ' + str(i) + ' cost: ' + str(costSum))
+            _ += 1
+            if costSum == 33523:
+                input()
+        gens += 1
 
     print("here")
+    print(min(tempCostList))
     print()
 main()
+
+
+
+#extra trash
 
 # for i in costSum:
 #     if(i - costMin < costStdDev):
